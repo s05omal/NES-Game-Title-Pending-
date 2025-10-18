@@ -48,8 +48,8 @@ clrmem:
   BNE clrmem
    
 vblankwait2:      ; Second wait for vblank, PPU is ready after this
-        BIT $2002
-        BPL vblankwait2
+  BIT $2002
+  BPL vblankwait2
 
 LoadPalettes:
   LDA $2002           ; read PPU status to reset the high/low latch
@@ -90,14 +90,14 @@ LoadSpritesLoop:
   LDA #%00010000    ;enable sprites
   STA $2001
 
-  LDA $0200
+  LDA $0200         ;set y pos of sprite 0
   STA player_y
 
-  LDA $0203
+  LDA $0203         ;set x pos of sprite 0
   STA player_x
 
 Foreverloop:
-        JMP Foreverloop
+  JMP Foreverloop
 
 NMI:
 
@@ -105,6 +105,9 @@ NMI:
   STA $2003       ; set the low byte (00) of the RAM address
   LDA #$02
   STA $4014       ; set the high byte (02) of the RAM address, start the transfer
+
+  LDA #$00
+  STA player_info
 
 LatchController:
   LDA #$01
@@ -129,66 +132,64 @@ ReadB:
 ReadBDone:        ; handling this button is done
 
 ReadSelect: 
-  LDA $4016       ; player 1 - A
+  LDA $4016       ; player 1 - Select
   AND #%00000001  ; only look at bit 0
-  BEQ ReadSelectDone   ; branch to ReadADone if button is NOT pressed (0)
+  BEQ ReadSelectDone   ; branch to ReadSelectDone if button is NOT pressed (0)
 
 ReadSelectDone:
 
 ReadStart: 
-  LDA $4016       ; player 1 - A
+  LDA $4016       ; player 1 - Start
   AND #%00000001  ; only look at bit 0
-  BEQ ReadStartDone   ; branch to ReadADone if button is NOT pressed (0)
+  BEQ ReadStartDone   ; branch to ReadStartDone if button is NOT pressed (0)
 
 ReadStartDone:
 
 ReadUp: 
-  LDA $4016       ; player 1 - A
+  LDA $4016       ; player 1 - Up
   AND #%00000001  ; only look at bit 0
-  BNE DoUp
-  BEQ ReadUpDone   ; branch to ReadADone if button is NOT pressed (0)
+  BEQ ReadUpDone   ; branch to ReadUpDone if button is NOT pressed (0)
 
 ;move char up
-DoUp:
-  LDA player_y
-  STA $0200
-  STA $0204
-  TAX
-  CLC
-  ADC #$08
-  STA $0208
-  STA $020C
-  DEX
-  STX player_y
+;DoUp:
+;  LDA player_y
+;  STA $0200
+;  STA $0204
+;  TAX
+;  CLC
+;  ADC #$08
+;  STA $0208
+;  STA $020C
+;  DEX
+;  STX player_y
 
 ReadUpDone:
 
 ReadDown: 
-  LDA $4016       ; player 1 - A
+  LDA $4016       ; player 1 - Down
   AND #%00000001  ; only look at bit 0
-  BNE DoDown
-  BEQ ReadDownDone   ; branch to ReadADone if button is NOT pressed (0)
+  BEQ ReadDownDone   ; branch to ReadDownDone if button is NOT pressed (0)
 
 ;move char down
-DoDown:
-  LDA player_y
-  STA $0200
-  STA $0204
-  TAX
-  CLC
-  ADC #$08
-  STA $0208
-  STA $020C
-  INX
-  STX player_y
+;DoDown:
+;  LDA player_y
+;  STA $0200
+;  STA $0204
+;  TAX
+;  CLC
+;  ADC #$08
+;  STA $0208
+;  STA $020C
+;  INX
+;  STX player_y
 
 ReadDownDone:
 
 ReadLeft: 
-  LDA $4016       ; player 1 - A
+  LDA $4016       ; player 1 - Left
   AND #%00000001  ; only look at bit 0
   BNE CheckFaceLeft
-  JMP ReadLeftDone   ; branch to ReadADone if button is NOT pressed (0)
+  JMP ReadLeftDone   ; branch to ReadLeftDone if button is NOT pressed (0)
 
 CheckFaceLeft:
   LDA $0202
@@ -196,7 +197,7 @@ CheckFaceLeft:
   BEQ FlipLeft
   JMP DoLeft
 
-FlipLeft:
+FlipLeft:   
   LDA #%01000000
   STA $0202
   STA $0206
@@ -213,16 +214,20 @@ DoLeft:
   ADC #$08
   STA $0203
   STA $020B
-  DEX
-  STX player_x
+  TXA
+  SBC #$01
+  STA player_x
+
+  LDA #$01
+  STA player_info
 
 ReadLeftDone:
 
 ReadRight: 
-  LDA $4016       ; player 1 - A
+  LDA $4016       ; player 1 - Right
   AND #%00000001  ; only look at bit 0
   BNE CheckFaceRight
-  JMP ReadRightDone ; branch to ReadADone if button is NOT pressed (0)
+  JMP ReadRightDone ; branch to ReadRightDone if button is NOT pressed (0)
 
 CheckFaceRight:
   LDA $0202
@@ -247,11 +252,50 @@ DoRight:
   ADC #$08
   STA $0207
   STA $020F
-  INX
-  STX player_x
+  TXA
+  ADC #$02
+  STA player_x
+
+  LDA #$01
+  STA player_info
 
 ReadRightDone:
 
+WalkAnim:
+  LDA player_info
+  BEQ StandStill
+
+  INC mvt_timer
+  LDA mvt_timer
+  AND #%00001000
+  BEQ WalkFrame1
+  AND #%00000100
+  BEQ WalkFrame2
+  JMP EndNMI
+
+WalkFrame1:
+  LDA #$04
+  STA $0209
+  LDA #$05
+  STA $020D
+  JMP EndNMI
+
+WalkFrame2:
+  LDA #$06
+  STA $0209
+  LDA #$07
+  STA $020D
+  JMP EndNMI
+
+StandStill:
+  LDA #$00
+  STA mvt_timer
+  LDA #$02
+  STA $0209
+  LDA #$03
+  STA $020D
+
+EndNMI:
   RTI
 
 ;;;;;;;;;;;;;;;
@@ -274,11 +318,11 @@ sprite_palette:
   .db $22,$0F,$36,$17   ;sprite palette 4 (goomba/bricks)
 
 sprites:
-    ; vert tile attr horiz
-  .db $08, $00, %00000000, $08    ;sprite 0 (top left)
-  .db $08, $01, %00000000, $10    ;sprite 1 (top right)
-  .db $10, $02, %00000000, $08    ;sprite 2 (bottom left)
-  .db $10, $03, %00000000, $10    ;sprite 3 (bottom right)
+    ; vert, tile, attr, horiz
+  .db $C0, $00, %00000000, $08    ;sprite 0 (top left)
+  .db $C0, $01, %00000000, $10    ;sprite 1 (top right)
+  .db $C8, $02, %00000000, $08    ;sprite 2 (bottom left)
+  .db $C8, $03, %00000000, $10    ;sprite 3 (bottom right)
   .db $10, $04, %00000000, $08    ;bottom left (walk 1)
   .db $10, $05, %00000000, $10    ;bottom right (walk 1)
   .db $10, $06, %00000000, $08    ;bottom left (walk 2)

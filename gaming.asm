@@ -12,8 +12,11 @@
 
 player_x  .rs 1   ; reserve 1 byte
 player_y  .rs 1
-player_info  .rs 1    ; for various player info things. first bit checks for movement. uhh the rest will maybe do stuff later idk
+player_info  .rs 1    ; for various player info things. first bit checks for walking.
+                      ; second bit checks for jumping. third bit checks if peak of jump has been reached
 mvt_timer  .rs 1    ;movement timer. caps out at #$03 and resets. used to do walk cycles
+max_jump_speed  .rs 1   ; speed jumps start at/falling caps out at
+jump_speed  .rs 1 
 
 ;;;;;;;;;;;;;;;
 
@@ -119,7 +122,9 @@ ReadA:
   LDA $4016       ; player 1 - A
   AND #%00000001  ; only look at bit 0
   BEQ ReadADone   ; branch to ReadADone if button is NOT pressed (0)
-                  ; add instructions here to do something when button IS pressed (1)
+  
+Jump:
+
 
 ReadADone:        ; handling this button is done
   
@@ -215,7 +220,7 @@ DoLeft:
   STA $0203
   STA $020B
   TXA
-  SBC #$01
+  SBC #$00
   STA player_x
 
   LDA #$01
@@ -253,7 +258,7 @@ DoRight:
   STA $0207
   STA $020F
   TXA
-  ADC #$02
+  ADC #$01
   STA player_x
 
   LDA #$01
@@ -271,21 +276,21 @@ WalkAnim:
   BEQ WalkFrame1
   AND #%00000100
   BEQ WalkFrame2
-  JMP EndNMI
+  JMP End
 
 WalkFrame1:
   LDA #$04
   STA $0209
   LDA #$05
   STA $020D
-  JMP EndNMI
+  JMP End
 
 WalkFrame2:
   LDA #$06
   STA $0209
   LDA #$07
   STA $020D
-  JMP EndNMI
+  JMP End
 
 StandStill:
   LDA #$00
@@ -295,7 +300,7 @@ StandStill:
   LDA #$03
   STA $020D
 
-EndNMI:
+End:
   RTI
 
 ;;;;;;;;;;;;;;;
@@ -303,19 +308,12 @@ EndNMI:
   .bank 1
   .org $E000
 
-; copying mario 1's overworld palettes
-
 background_palette: 
-  .db $22,$29,$1A,$0F   ;background palette 1 (bushes)
-  .db $22,$36,$17,$0F   ;background palette 2 (floor tiles)
-  .db $22,$30,$21,$0F   ;background palette 3 (clouds)
-  .db $22,$27,$17,$0F   ;bg palette 4 (coins)
+  .db $22,$29,$1A,$0F   ;background palette 1
 
 sprite_palette:
   .db $22,$16,$27,$20   ;sprite palette 1 (shibe)
-  .db $22,$1A,$30,$27   ;sprite palette 2 (green koopa/piranha plant/1up)
-  .db $22,$16,$30,$27   ;sprite palette 3 (red koopa/super mushroom)
-  .db $22,$0F,$36,$17   ;sprite palette 4 (goomba/bricks)
+  .db $22,$1A,$15,$16   ;ground tile palette (i think ground tiles need to be in the background?? but i dont know how to do that yet. sooooo theyre going in the sprite layer)
 
 sprites:
     ; vert, tile, attr, horiz
@@ -323,10 +321,6 @@ sprites:
   .db $C0, $01, %00000000, $10    ;sprite 1 (top right)
   .db $C8, $02, %00000000, $08    ;sprite 2 (bottom left)
   .db $C8, $03, %00000000, $10    ;sprite 3 (bottom right)
-  .db $10, $04, %00000000, $08    ;bottom left (walk 1)
-  .db $10, $05, %00000000, $10    ;bottom right (walk 1)
-  .db $10, $06, %00000000, $08    ;bottom left (walk 2)
-  .db $10, $07, %00000000, $10    ;bottom right (walk 2)
 
 ;;;;;;;;;;;;;;;
 

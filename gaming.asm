@@ -112,6 +112,9 @@ NMI:
   LDA #$00
   STA player_info
 
+  LDA #$05
+  STA max_jump_speed
+
 LatchController:
   LDA #$01
   STA $4016
@@ -121,10 +124,18 @@ LatchController:
 ReadA: 
   LDA $4016       ; player 1 - A
   AND #%00000001  ; only look at bit 0
+  BNE Jump
   BEQ ReadADone   ; branch to ReadADone if button is NOT pressed (0)
   
 Jump:
+  CLC
+  LDA player_info
+  ADC #%00000010
+  STA player_info
 
+  LDX player_y
+  DEX
+  STX player_y
 
 ReadADone:        ; handling this button is done
   
@@ -155,38 +166,12 @@ ReadUp:
   AND #%00000001  ; only look at bit 0
   BEQ ReadUpDone   ; branch to ReadUpDone if button is NOT pressed (0)
 
-;move char up
-;DoUp:
-;  LDA player_y
-;  STA $0200
-;  STA $0204
-;  TAX
-;  CLC
-;  ADC #$08
-;  STA $0208
-;  STA $020C
-;  DEX
-;  STX player_y
-
 ReadUpDone:
 
 ReadDown: 
   LDA $4016       ; player 1 - Down
   AND #%00000001  ; only look at bit 0
   BEQ ReadDownDone   ; branch to ReadDownDone if button is NOT pressed (0)
-
-;move char down
-;DoDown:
-;  LDA player_y
-;  STA $0200
-;  STA $0204
-;  TAX
-;  CLC
-;  ADC #$08
-;  STA $0208
-;  STA $020C
-;  INX
-;  STX player_y
 
 ReadDownDone:
 
@@ -198,7 +183,7 @@ ReadLeft:
 
 CheckFaceLeft:
   LDA $0202
-  AND #$40
+  BIT #%00000100
   BEQ FlipLeft
   JMP DoLeft
 
@@ -211,19 +196,16 @@ FlipLeft:
 
 ;move char to left
 DoLeft:
-  LDA player_x
-  STA $0207
-  STA $020F
-  TAX
   CLC
-  ADC #$08
-  STA $0203
-  STA $020B
-  TXA
+  LDA player_x
   SBC #$00
   STA player_x
 
-  LDA #$01
+  CLC
+  LDA player_info
+  BIT #%00000001
+  BNE ReadLeftDone
+  ADC #%00000001
   STA player_info
 
 ReadLeftDone:
@@ -249,6 +231,38 @@ FlipRight:
 
 ;move char to right
 DoRight:
+  CLC
+  LDA player_x
+  ADC #$01
+  STA player_x
+
+  CLC
+  LDA player_info
+  BIT #%00000001
+  BNE ReadRightDone
+  ADC #%00000001
+  STA player_info
+
+ReadRightDone:
+
+UpdateSpriteX:
+  LDA $0202
+  BIT #%00000100
+  BNE UpdateLeft
+  JMP UpdateRight
+
+UpdateLeft:
+  LDA player_x
+  STA $0207
+  STA $020F
+  TAX
+  CLC
+  ADC #$08
+  STA $0203
+  STA $020B
+  JMP UpdateSpriteY
+
+UpdateRight:
   LDA player_x
   STA $0203
   STA $020B
@@ -257,25 +271,30 @@ DoRight:
   ADC #$08
   STA $0207
   STA $020F
-  TXA
-  ADC #$01
-  STA player_x
 
-  LDA #$01
-  STA player_info
+UpdateSpriteY:
+  LDA player_y
+  STA $0200
+  STA $0204
+  TAX
+  CLC
+  ADC #$08
+  STA $0208
+  STA $020C
 
-ReadRightDone:
 
-WalkAnim:
+Animations:
+  LDA player_info
+  AND #%00000010
+  BNE JumpHandler
+
   LDA player_info
   BEQ StandStill
-
   INC mvt_timer
   LDA mvt_timer
   AND #%00001000
   BEQ WalkFrame1
-  AND #%00000100
-  BEQ WalkFrame2
+  BNE WalkFrame2
   JMP End
 
 WalkFrame1:
@@ -299,6 +318,14 @@ StandStill:
   STA $0209
   LDA #$03
   STA $020D
+  JMP End
+
+JumpHandler:
+  LDA #$08
+  STA $0209
+  LDA #$09
+  STA $020D
+  JMP End
 
 End:
   RTI

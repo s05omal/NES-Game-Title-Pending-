@@ -178,21 +178,8 @@ ReadDownDone:
 ReadLeft: 
   LDA $4016       ; player 1 - Left
   AND #%00000001  ; only look at bit 0
-  BNE CheckFaceLeft
-  JMP ReadLeftDone   ; branch to ReadLeftDone if button is NOT pressed (0)
-
-CheckFaceLeft:
-  LDA $0202
-  BIT #%00000100
-  BEQ FlipLeft
-  JMP DoLeft
-
-FlipLeft:   
-  LDA #%01000000
-  STA $0202
-  STA $0206
-  STA $020A
-  STA $020E
+  BEQ ReadLeftDone   ; branch to ReadLeftDone if button is NOT pressed (0)
+  JSR CheckFaceLeft
 
 ;move char to left
 DoLeft:
@@ -213,21 +200,8 @@ ReadLeftDone:
 ReadRight: 
   LDA $4016       ; player 1 - Right
   AND #%00000001  ; only look at bit 0
-  BNE CheckFaceRight
-  JMP ReadRightDone ; branch to ReadRightDone if button is NOT pressed (0)
-
-CheckFaceRight:
-  LDA $0202
-  AND #$40
-  BNE FlipRight
-  JMP DoRight
-
-FlipRight:
-  LDA #%00000000
-  STA $0202
-  STA $0206
-  STA $020A
-  STA $020E
+  BEQ ReadRightDone ; branch to ReadRightDone if button is NOT pressed (0)
+  JSR CheckFaceRight
 
 ;move char to right
 DoRight:
@@ -244,6 +218,44 @@ DoRight:
   STA player_info
 
 ReadRightDone:
+
+GameLogic:
+  JSR UpdateShibePosition
+  JSR ShibeAnimations
+
+End:
+  RTI
+
+CheckFaceLeft:
+  LDA $0202
+  BIT #%00000100
+  BEQ FlipLeft
+  RTS
+
+FlipLeft:   
+  LDA #%01000000
+  STA $0202
+  STA $0206
+  STA $020A
+  STA $020E
+  RTS
+
+CheckFaceRight:
+  LDA $0202
+  AND #$40
+  BNE FlipRight
+  RTS
+
+FlipRight:
+  LDA #%00000000
+  STA $0202
+  STA $0206
+  STA $020A
+  STA $020E
+  RTS
+
+UpdateShibePosition:
+  JMP UpdateSpriteX
 
 UpdateSpriteX:
   LDA $0202
@@ -281,9 +293,9 @@ UpdateSpriteY:
   ADC #$08
   STA $0208
   STA $020C
+  RTS
 
-
-Animations:
+  ShibeAnimations:
   LDA player_info
   AND #%00000010
   BNE JumpHandler
@@ -295,21 +307,21 @@ Animations:
   AND #%00001000
   BEQ WalkFrame1
   BNE WalkFrame2
-  JMP End
+  RTS
 
 WalkFrame1:
   LDA #$04
   STA $0209
   LDA #$05
   STA $020D
-  JMP End
+  RTS
 
 WalkFrame2:
   LDA #$06
   STA $0209
   LDA #$07
   STA $020D
-  JMP End
+  RTS
 
 StandStill:
   LDA #$00
@@ -318,17 +330,14 @@ StandStill:
   STA $0209
   LDA #$03
   STA $020D
-  JMP End
+  RTS
 
 JumpHandler:
   LDA #$08
   STA $0209
   LDA #$09
   STA $020D
-  JMP End
-
-End:
-  RTI
+  RTS
 
 ;;;;;;;;;;;;;;;
 

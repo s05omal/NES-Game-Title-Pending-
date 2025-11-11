@@ -109,9 +109,6 @@ NMI:
   LDA #$02
   STA $4014       ; set the high byte (02) of the RAM address, start the transfer
 
-  LDA #$00
-  STA player_info
-
   LDA #$05
   STA max_jump_speed
 
@@ -124,18 +121,23 @@ LatchController:
 ReadA: 
   LDA $4016       ; player 1 - A
   AND #%00000001  ; only look at bit 0
-  BNE Jump
-  BEQ ReadADone   ; branch to ReadADone if button is NOT pressed (0)
+  BNE APress
+  BEQ NoAPress   ; branch to ReadADone if button is NOT pressed (0)
   
-Jump:
-  CLC
+APress:
   LDA player_info
+  BIT #%00000010
+  BNE ReadADone
   ADC #%00000010
   STA player_info
+  JMP ReadADone
 
-  LDX player_y
-  DEX
-  STX player_y
+NoAPress:
+  LDA player_info
+  BIT #%00000010
+  BEQ ReadADone
+  SBC #%00000001
+  STA player_info
 
 ReadADone:        ; handling this button is done
   
@@ -178,7 +180,7 @@ ReadDownDone:
 ReadLeft: 
   LDA $4016       ; player 1 - Left
   AND #%00000001  ; only look at bit 0
-  BEQ ReadLeftDone   ; branch to ReadLeftDone if button is NOT pressed (0)
+  BEQ NoLeftPress   ; branch to ReadLeftDone if button is NOT pressed (0)
   JSR CheckFaceLeft
 
 ;move char to left
@@ -193,6 +195,16 @@ DoLeft:
   BIT #%00000001
   BNE ReadLeftDone
   ADC #%00000001
+  STA player_info
+  JMP ReadLeftDone
+
+NoLeftPress:
+  LDA player_info
+  BIT #%00000001
+  BEQ ReadLeftDone
+  BIT #%00000010
+  BEQ ReadLeftDone
+  SBC #%00000000
   STA player_info
 
 ReadLeftDone:
@@ -220,11 +232,27 @@ DoRight:
 ReadRightDone:
 
 GameLogic:
+  JSR UpdateJump
   JSR UpdateShibePosition
   JSR ShibeAnimations
 
 End:
   RTI
+
+UpdateJump:
+  LDA player_info
+  BIT #%00000010
+  BNE Jump
+  RTS
+
+Jump:
+  LDX player_y
+  DEX
+  STX player_y
+  RTS
+
+DontJump:
+  RTS
 
 CheckFaceLeft:
   LDA $0202
